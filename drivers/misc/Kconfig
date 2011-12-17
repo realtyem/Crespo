@@ -601,4 +601,10 @@ config GENERIC_BLN
          Say Y here to enable the backlight notification
          for android led-notification (modified liblight needed)
 
+config LIVE_OC
+       bool "Support for Live OC"
+       default y
+       help
+         Say Y here to enable Live OC
+
 endif # MISC_DEVICES

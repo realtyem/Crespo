@@ -130,6 +130,10 @@ struct wifi_mem_prealloc {
 	unsigned long size;
 };
 
+#ifdef CONFIG_CPU_FREQ_GOV_ONDEMAND_2_PHASE
+int set_two_phase_freq(int cpufreq);
+#endif
+
 static int herring_notifier_call(struct notifier_block *this,
 					unsigned long code, void *_cmd)
 {
@@ -5839,6 +5843,9 @@ static void __init herring_machine_init(void)
 	/*initialise the gpio's*/
 	herring_init_gpio();
 
+#ifdef CONFIG_CPU_FREQ_GOV_ONDEMAND_2_PHASE
+	set_two_phase_freq(920000);
+#endif
 #ifdef CONFIG_ANDROID_PMEM
 	android_pmem_set_platdata();
 #endif

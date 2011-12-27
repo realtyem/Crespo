@@ -13,6 +13,8 @@
 #ifndef __MACH_IOMMU_H
 #define __MACH_IOMMU_H
 
+#include <linux/pm_qos.h>
+
 struct iotlb_entry {
 	u32 da;
 	u32 pa;

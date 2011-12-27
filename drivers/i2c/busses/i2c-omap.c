@@ -40,6 +40,8 @@
 #include <linux/slab.h>
 #include <linux/i2c-omap.h>
 #include <linux/pm_runtime.h>
+#include <linux/pm_qos.h>
+
 
 /* I2C controller revisions */
 #define OMAP_I2C_REV_2			0x20

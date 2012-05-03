@@ -428,6 +428,7 @@ static void cpufreq_interactive_freq_down(struct work_struct *work)
 				max_freq = pjcpu->target_freq;
 		}
 
+#ifdef CONFIG_SMP
 #ifdef CONFIG_HAS_EARLYSUSPEND
 		/* should we enable auxillary CPUs? */
 		/* only master CPU is alive and Screen is ON */
@@ -441,6 +442,7 @@ static void cpufreq_interactive_freq_down(struct work_struct *work)
 			cpu_down(1);
 			printk("Interactive - Screen OFF Hot-unplug!\n");
 		}
+#endif
 #endif
 
 		if (max_freq != pcpu->policy->cur)

@@ -425,6 +425,7 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 		return;
 	}
 
+#ifdef CONFIG_SMP
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	/* should we enable auxillary CPUs? */
 	/* only master CPU is alive and Screen is ON */
@@ -442,6 +443,7 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 		printk("Conservative - Screen OFF Hot-unplug!\n");
 		mutex_lock(&this_dbs_info->timer_mutex);
 	}
+#endif
 #endif
 
 	/*

@@ -492,6 +492,10 @@ static char dhd_version[] = "Dongle Host Driver, version " EPI_VERSION_STR
 #endif
 ;
 
+#if defined(CONFIG_HAS_EARLYSUSPEND)
+bool wifi_fast = false;
+module_param(wifi_fast, bool, 0644);
+#endif
 
 #if defined(CONFIG_WIRELESS_EXT)
 struct iw_statistics *dhd_get_wireless_stats(struct net_device *dev);
@@ -571,6 +575,9 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 #ifdef CUSTOMER_HW2
 	uint roamvar = 1;
 #endif /* CUSTOMER_HW2 */
+
+	if (wifi_fast)
+		power_mode = PM_FAST;
 
 	DHD_TRACE(("%s: enter, value = %d in_suspend = %d\n",
 			__FUNCTION__, value, dhd->in_suspend));

@@ -45,6 +45,7 @@
 #include "epautoconf.c"
 #include "composite.c"
 
+#include "f_audio_source.c"
 #include "f_mass_storage.c"
 #include "u_serial.c"
 #include "f_acm.c"
@@ -100,7 +101,6 @@ struct android_dev {
 	struct device *dev;
 
 	bool enabled;
-	struct mutex mutex;
 	bool connected;
 	bool sw_connected;
 	struct work_struct work;
@@ -644,6 +644,70 @@ static struct android_usb_function accessory_function = {
 };
 
 
+
+
+static int audio_source_function_init(struct android_usb_function *f,
+			struct usb_composite_dev *cdev)
+{
+	struct audio_source_config *config;
+
+	config = kzalloc(sizeof(struct audio_source_config), GFP_KERNEL);
+	if (!config)
+		return -ENOMEM;
+	config->card = -1;
+	config->device = -1;
+	f->config = config;
+	return 0;
+}
+
+static void audio_source_function_cleanup(struct android_usb_function *f)
+{
+	kfree(f->config);
+}
+
+static int audio_source_function_bind_config(struct android_usb_function *f,
+						struct usb_configuration *c)
+{
+	struct audio_source_config *config = f->config;
+
+	return audio_source_bind_config(c, config);
+}
+
+static void audio_source_function_unbind_config(struct android_usb_function *f,
+						struct usb_configuration *c)
+{
+	struct audio_source_config *config = f->config;
+
+	config->card = -1;
+	config->device = -1;
+}
+
+static ssize_t audio_source_pcm_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct android_usb_function *f = dev_get_drvdata(dev);
+	struct audio_source_config *config = f->config;
+
+	/* print PCM card and device numbers */
+	return sprintf(buf, "%d %d\n", config->card, config->device);
+}
+
+static DEVICE_ATTR(pcm, S_IRUGO | S_IWUSR, audio_source_pcm_show, NULL);
+
+static struct device_attribute *audio_source_function_attributes[] = {
+	&dev_attr_pcm,
+	NULL
+};
+
+static struct android_usb_function audio_source_function = {
+	.name		= "audio_source",
+	.init		= audio_source_function_init,
+	.cleanup	= audio_source_function_cleanup,
+	.bind_config	= audio_source_function_bind_config,
+	.unbind_config	= audio_source_function_unbind_config,
+	.attributes	= audio_source_function_attributes,
+};
+
 static struct android_usb_function *supported_functions[] = {
 	&adb_function,
 	&acm_function,
@@ -652,9 +716,9 @@ static struct android_usb_function *supported_functions[] = {
 	&rndis_function,
 	&mass_storage_function,
 	&accessory_function,
+	&audio_source_function,
 	NULL
 };
-
 
 static int android_init_functions(struct android_usb_function **functions,
 				  struct usb_composite_dev *cdev)
@@ -775,12 +839,10 @@ functions_show(struct device *pdev, struct device_attribute *attr, char *buf)
 	struct android_usb_function *f;
 	char *buff = buf;
 
-	mutex_lock(&dev->mutex);
 
 	list_for_each_entry(f, &dev->enabled_functions, enabled_list)
 		buff += sprintf(buff, "%s,", f->name);
 
-	mutex_unlock(&dev->mutex);
 
 	if (buff != buf)
 		*(buff-1) = '\n';
@@ -796,12 +858,6 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 	char buf[256], *b;
 	int err;
 
-	mutex_lock(&dev->mutex);
-
-	if (dev->enabled) {
-		mutex_unlock(&dev->mutex);
-		return -EBUSY;
-	}
 
 	INIT_LIST_HEAD(&dev->enabled_functions);
 
@@ -817,7 +873,6 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 		}
 	}
 
-	mutex_unlock(&dev->mutex);
 
 	return size;
 }
@@ -836,7 +891,6 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 	struct usb_composite_dev *cdev = dev->cdev;
 	int enabled = 0;
 
-	mutex_lock(&dev->mutex);
 
 	sscanf(buff, "%d", &enabled);
 	if (enabled && !dev->enabled) {
@@ -863,7 +917,6 @@ static ssize_t enable_store(struct device *pdev, struct device_attribute *attr,
 				dev->enabled ? "enabled" : "disabled");
 	}
 
-	mutex_unlock(&dev->mutex);
 	return size;
 }
 
@@ -1160,7 +1213,6 @@ static int __init init(void)
 	dev->functions = supported_functions;
 	INIT_LIST_HEAD(&dev->enabled_functions);
 	INIT_WORK(&dev->work, android_work);
-	mutex_init(&dev->mutex);
 
 	err = android_create_device(dev);
 	if (err) {

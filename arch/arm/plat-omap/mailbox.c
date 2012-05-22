@@ -29,6 +29,7 @@
 #include <linux/kfifo.h>
 #include <linux/err.h>
 #include <linux/notifier.h>
+#include <linux/pm_qos.h>
 
 #include <plat/mailbox.h>
 

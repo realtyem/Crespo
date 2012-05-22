@@ -6,6 +6,7 @@
 #include <linux/init.h>
 #include <linux/pm.h>
 #include <linux/mm.h>
+#include <linux/freezer.h>
 #include <asm/errno.h>
 
 #if defined(CONFIG_PM_SLEEP) && defined(CONFIG_VT) && defined(CONFIG_VT_CONSOLE)
@@ -92,6 +93,13 @@ typedef int __bitwise suspend_state_t;
  *	@enter() and @wake(), even if any of them fails.  It is executed after
  *	a failing @prepare.
  *
+ * @suspend_again: Returns whether the system should suspend again (true) or
+ *	not (false). If the platform wants to poll sensors or execute some
+ *	code during suspended without invoking userspace and most of devices,
+ *	suspend_again callback is the place assuming that periodic-wakeup or
+ *	alarm-wakeup is already setup. This allows to execute some codes while
+ *	being kept suspended in the view of userland and devices.
+ *
  * @end: Called by the PM core right after resuming devices, to indicate to
  *	the platform that the system has returned to the working state or
  *	the transition to the sleep state has been aborted.
@@ -113,6 +121,7 @@ struct platform_suspend_ops {
 	int (*enter)(suspend_state_t state);
 	void (*wake)(void);
 	void (*finish)(void);
+	bool (*suspend_again)(void);
 	void (*end)(void);
 	void (*recover)(void);
 };
@@ -260,6 +269,8 @@ static inline int hibernate(void) { return -ENOSYS; }
 static inline bool system_entering_hibernation(void) { return false; }
 #endif /* CONFIG_HIBERNATION */
 
+extern struct mutex pm_mutex;
+
 #ifdef CONFIG_PM_SLEEP
 void save_processor_state(void);
 void restore_processor_state(void);
@@ -280,6 +291,19 @@ extern bool events_check_enabled;
 extern bool pm_wakeup_pending(void);
 extern bool pm_get_wakeup_count(unsigned int *count);
 extern bool pm_save_wakeup_count(unsigned int count);
+
+static inline void lock_system_sleep(void)
+{
+	freezer_do_not_count();
+	mutex_lock(&pm_mutex);
+}
+
+static inline void unlock_system_sleep(void)
+{
+	mutex_unlock(&pm_mutex);
+	freezer_count();
+}
+
 #else /* !CONFIG_PM_SLEEP */
 
 static inline int register_pm_notifier(struct notifier_block *nb)
@@ -295,27 +319,10 @@ static inline int unregister_pm_notifier(struct notifier_block *nb)
 #define pm_notifier(fn, pri)	do { (void)(fn); } while (0)
 
 static inline bool pm_wakeup_pending(void) { return false; }
-#endif /* !CONFIG_PM_SLEEP */
 
-extern struct mutex pm_mutex;
-
-#ifndef CONFIG_HIBERNATE_CALLBACKS
 static inline void lock_system_sleep(void) {}
 static inline void unlock_system_sleep(void) {}
 
-#else
-
-/* Let some subsystems like memory hotadd exclude hibernation */
-
-static inline void lock_system_sleep(void)
-{
-	mutex_lock(&pm_mutex);
-}
-
-static inline void unlock_system_sleep(void)
-{
-	mutex_unlock(&pm_mutex);
-}
-#endif
+#endif /* !CONFIG_PM_SLEEP */
 
 #endif /* _LINUX_SUSPEND_H */

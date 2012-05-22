@@ -130,6 +130,10 @@ struct wifi_mem_prealloc {
 	unsigned long size;
 };
 
+#ifdef CONFIG_CPU_FREQ_GOV_ONDEMAND_2_PHASE
+int set_two_phase_freq(int cpufreq);
+#endif
+
 static int herring_notifier_call(struct notifier_block *this,
 					unsigned long code, void *_cmd)
 {
@@ -295,7 +299,11 @@ static struct s3cfb_lcd s6e63m0 = {
 	.p_width = 52,
 	.p_height = 86,
 	.bpp = 24,
+#ifdef CONFIG_FB_S3C_INCREASED_HZ
+	.freq = 72,
+#else
 	.freq = 60,
+#endif
 
 	.timing = {
 		.h_fp = 16,
@@ -321,6 +329,18 @@ static struct s3cfb_lcd nt35580 = {
 	.p_width = 52,
 	.p_height = 86,
 	.bpp = 24,
+#ifdef CONFIG_FB_S3C_INCREASED_HZ
+	.freq = 72,
+	.timing = {
+               .h_fp = 16,
+	       .h_bp = 16,
+	       .h_sw = 2,
+	       .v_fp = 28,
+	       .v_fpe = 1,
+	       .v_bp = 1,
+	       .v_bpe = 1,
+	       .v_sw = 2,
+#else
 	.freq = 60,
 	.timing = {
 		.h_fp = 10,
@@ -331,6 +351,7 @@ static struct s3cfb_lcd nt35580 = {
 		.v_bp = 8,
 		.v_bpe = 1,
 		.v_sw = 2,
+#endif
 	},
 	.polarity = {
 		.rise_vclk = 1,
@@ -346,7 +367,11 @@ static struct s3cfb_lcd r61408 = {
 	.p_width = 52,
 	.p_height = 86,
 	.bpp = 24,
+#ifdef CONFIG_FB_S3C_INCREASED_HZ
+	.freq = 72,
+#else
 	.freq = 60,
+#endif
 	.timing = {
 		.h_fp = 100,
 		.h_bp = 2,
@@ -365,16 +390,29 @@ static struct s3cfb_lcd r61408 = {
 	},
 };
 
-#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC0 (6144 * SZ_1K)
-#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC2 (6144 * SZ_1K)
+#ifdef CONFIG_S5PV210_BIGMEM
+#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC0 (4608 * SZ_1K)
+#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC1 (0)
+#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC2 (5120 * SZ_1K)
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC0 (11264 * SZ_1K) // 11Mb
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC1 (11264 * SZ_1K) // 11Mb
+#else
+#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC0 (6144 * SZ_1K)
+#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC1 (9900 * SZ_1K)
+#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC2 (6144 * SZ_1K)
+#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC0 (36864 * SZ_1K)
+#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_MFC1 (36864 * SZ_1K)
+#endif
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMD (S5PV210_LCD_WIDTH * \
 					     S5PV210_LCD_HEIGHT * 4 * \
 					     (CONFIG_FB_S3C_NR_BUFFERS + \
 						 (CONFIG_FB_S3C_NUM_OVLY_WIN * \
 						  CONFIG_FB_S3C_NUM_BUF_OVLY_WIN)))
+#ifdef CONFIG_S5PV210_BIGMEM
 #define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_JPEG (4092 * SZ_1K)
+#else
+#define  S5PV210_VIDEO_SAMSUNG_MEMSIZE_JPEG (8192 * SZ_1K)
+#endif
 
 static struct s5p_media_device herring_media_devs[] = {
 	[0] = {
@@ -398,6 +436,15 @@ static struct s5p_media_device herring_media_devs[] = {
 		.memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC0,
 		.paddr = 0,
 	},
+#ifndef CONFIG_S5PV210_BIGMEM
+	[3] = {
+		.id = S5P_MDEV_FIMC1,
+		.name = "fimc1",
+		.bank = 1,
+		.memsize = S5PV210_VIDEO_SAMSUNG_MEMSIZE_FIMC1,
+		.paddr = 0,
+	},
+#endif
 	[4] = {
 		.id = S5P_MDEV_FIMC2,
 		.name = "fimc2",
@@ -5796,6 +5843,9 @@ static void __init herring_machine_init(void)
 	/*initialise the gpio's*/
 	herring_init_gpio();
 
+#ifdef CONFIG_CPU_FREQ_GOV_ONDEMAND_2_PHASE
+	set_two_phase_freq(920000);
+#endif
 #ifdef CONFIG_ANDROID_PMEM
 	android_pmem_set_platdata();
 #endif

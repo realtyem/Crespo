@@ -1,6 +1,6 @@
 #
 # Automatically generated make config: don't edit
-# Linux/arm 3.0.32 Kernel Configuration
+# Linux/arm 3.0.34 Kernel Configuration
 #
 CONFIG_ARM=y
 CONFIG_HAVE_PWM=y
@@ -2521,6 +2521,8 @@ CONFIG_CRYPTO_DEV_S5P=y
 # Library routines
 #
 CONFIG_BITREVERSE=y
+CONFIG_GENERIC_STRNCPY_FROM_USER=y
+CONFIG_GENERIC_STRNLEN_USER=y
 CONFIG_CRC_CCITT=y
 CONFIG_CRC16=y
 # CONFIG_CRC_T10DIF is not set
